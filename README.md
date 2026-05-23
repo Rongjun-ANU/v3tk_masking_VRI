@@ -34,6 +34,20 @@ The folder size is roughly 537 MB. At the time this README was written, no file 
 larger than GitHub's 100 MB hard per-file limit. The largest files are the combined
 mosaic PNGs at about 58 MB each, which GitHub may warn about but should accept.
 
+## Upstream Input Image Preparation
+
+This repository assumes that the per-galaxy VRI reference images already exist as
+`*_combined_VRI.png` files. If starting from earlier MAUVE/MUSE products, first check
+out the companion company repository:
+
+[Rongjun-ANU/v3tk_to_VRI](https://github.com/Rongjun-ANU/v3tk_to_VRI)
+
+That repository is used to create the input images for this masking repository: RGB
+images from the VRI bands of available MAUVE-MUSE galaxies, combined with rescaled
+Legacy Survey images as the background. After those `*_combined_VRI.png` images and
+matching VRI FITS products are available, use this repository to generate the spatial
+masks, diagnostic mask overlays, and all-galaxy overview mosaics.
+
 ## Galaxy Sample
 
 The included galaxies are:
@@ -153,6 +167,9 @@ python -m pip install numpy astropy matplotlib pillow astroquery pyvo scipy orto
 ## Reproducing the Current Products
 
 From the repository root:
+
+If the `*_combined_VRI.png` inputs are missing, first generate them using the companion
+`Rongjun-ANU/v3tk_to_VRI` workflow described above. Then run:
 
 ```bash
 python make_ngist_masks_from_catalogs_VRI.py
