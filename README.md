@@ -19,6 +19,8 @@ The current snapshot is intended to be a self-contained record of the masking ru
 | Path or pattern | Count | Description |
 | --- | ---: | --- |
 | `make_ngist_masks_from_catalogs_VRI.py` | 1 | Main masking script. Generates binary spatial masks and diagnostic overlays from local VRI FITS datacubes, reading `.fits` and `.fits.gz` inputs in place without copying, unzipping, or deleting them. |
+| `test_gaia_query_retry.py` | 1 | Focused regression test proving that transient Gaia failures are retried until a query succeeds. |
+| `test_legacy_query_retry.py` | 1 | Focused regression test proving that the Legacy tractor query and every photo-z chunk retry independently until successful. |
 | `auto_arrange_and_combine.py` | 1 | Mosaic arranger. Packs per-galaxy PNGs into dense fixed-ratio overview images, with optional OR-Tools proof reports. |
 | `*_DATACUBE*_VRI.fits` or `.fits.gz` | 34 | Input VRI FITS datacubes used for WCS, pixel geometry, and science-data footprint. Compressed inputs are read directly with Astropy and do not need to be unzipped first. |
 | `*_mask.fits` | 34 | Binary nGIST-compatible spatial masks. `0` means unmasked; `1` means masked. |
@@ -147,10 +149,12 @@ Important implementation details:
 
 - The script prefers pixel-locked overlays so the mask can be visually checked against the FITS grid.
 - Gaia masking defaults to a foreground-selection mode based on parallax and proper motion evidence.
+- Once `astroquery.gaia` is available, any failed Gaia query is retried until it succeeds. The retry delay grows by 2 seconds per attempt up to a 60-second cap, and Ctrl-C remains available to stop the run; a successful query with zero rows is still a valid result.
 - Gaia DR3 source positions are propagated from each source `ref_epoch` to the FITS observation epoch using `pmra` and `pmdec` before foreground-star mask placement, diagnostic star overlays, and Gaia-near background-candidate rejection.
 - Gaia foreground-star masks use a hybrid rule: ordinary G >= 16 stars get a 1.2 arcsec seeing-based floor, G < 16 stars get magnitude-grown circular masks capped at 5.0 arcsec, and G < 14 stars are logged with a diffraction/saturation warning instead of receiving any special cross mask. The magnitude-grown branch uses `r_mag = star_r_ref_arcsec * 10^(-0.2 * (G - star_g_ref))`, then `r = min(star_r_max_arcsec, max(r_floor, r_mag + star_margin_arcsec))`; current defaults are `star_r_ref_arcsec=1.4`, `star_g_ref=16.0`, `star_margin_arcsec=0.2`, and `star_r_max_arcsec=5.0`.
 - Background-galaxy masks use 1.2 arcsec minimum fallback/floor values, 5.0 arcsec maximum fallback/Legacy semi-axis caps, and diagnostic overlay contours are drawn with thinner 0.6 line widths.
 - Legacy DR9 background-galaxy masking uses morphology and photo-z information where available.
+- Every Legacy DR9 TAP request, including the tractor query and each 500-ID photo-z chunk, retries independently until successful using the same 2-to-60-second delay policy as Gaia; Ctrl-C remains available, and a completed zero-row query is valid.
 - If a foreground-star mask and background-galaxy candidate overlap even partially, the script rejects the background-galaxy candidate and keeps only the foreground-star mask.
 - Catalog and photometric fallback methods are disabled by default unless the corresponding configuration flag is explicitly enabled.
 - The target-footprint veto is intended to reduce accidental masking of target-galaxy HII regions or internal structure.
